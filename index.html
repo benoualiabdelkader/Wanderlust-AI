@@ -1,0 +1,2196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wanderlust AI - Your Personal Travel Planner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --sidebar-width: 280px;
+            --primary-color: #8b5cf6;
+            --secondary-color: #ec4899;
+            --accent-color: #0ea5e9;
+            --text-color: #1f2937;
+            --light-bg: #f9fafb;
+            --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f3f4ff, #fef2f7);
+            color: var(--text-color);
+        }
+        .sidebar {
+            width: var(--sidebar-width);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+        .main-content {
+            margin-left: var(--sidebar-width);
+            transition: margin-left 0.3s ease;
+            width: calc(100% - var(--sidebar-width));
+        }
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                z-index: 40;
+                height: 100%;
+            }
+            .sidebar-open {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+            }
+        }
+        .active-nav {
+            background-color: rgba(139, 92, 246, 0.15);
+            color: var(--primary-color);
+            border-radius: 0.5rem;
+            font-weight: 600;
+        }
+        .card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .btn-primary {
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 10px rgba(0, 0, 0, 0.1);
+            filter: brightness(1.05);
+        }
+        .btn-secondary {
+            background: var(--light-bg);
+            color: var(--text-color);
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        .btn-secondary:hover {
+            background: #f3f4f6;
+            transform: translateY(-2px);
+        }
+        .skeleton-loader {
+            background-color: #e5e7eb;
+            border-radius: 0.5rem;
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            50% {
+                opacity: .5;
+            }
+        }
+        /* Page Transitions */
+        .page {
+            animation: fadeIn 0.5s ease-out;
+            width: 100%;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Chat bubble styling */
+        .chat-bubble-user {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .chat-bubble-ai {
+            background-color: #f3f4f6;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+        /* Badge styling */
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .badge-primary {
+            background: rgba(139, 92, 246, 0.15);
+            color: var(--primary-color);
+        }
+        .badge-secondary {
+            background: rgba(236, 72, 153, 0.15);
+            color: var(--secondary-color);
+        }
+        .badge-accent {
+            background: rgba(14, 165, 233, 0.15);
+            color: var(--accent-color);
+        }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+    <div class="flex h-screen">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar fixed top-0 left-0 h-full bg-white/90 backdrop-blur-lg p-6 flex flex-col justify-between z-50">
+            <div>
+                <div class="flex items-center gap-2 mb-10">
+                    <i class="fas fa-globe-americas text-3xl text-purple-600"></i>
+                    <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">Wanderlust AI</h1>
+                </div>
+                <nav id="nav-menu" class="space-y-2">
+                    <a href="#home" class="nav-link active-nav flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200">
+                        <i class="fas fa-home w-6 text-center"></i><span class="ml-4 font-semibold">Home</span>
+                    </a>
+                    <a href="#explore" class="nav-link flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200">
+                        <i class="fas fa-compass w-6 text-center"></i><span class="ml-4 font-semibold">Explore</span>
+                    </a>
+                    <a href="#hotels" class="nav-link flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200">
+                        <i class="fas fa-hotel w-6 text-center"></i><span class="ml-4 font-semibold">Hotels</span>
+                    </a>
+                    <a href="#flights" class="nav-link flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200">
+                        <i class="fas fa-plane-departure w-6 text-center"></i><span class="ml-4 font-semibold">Flights</span>
+                    </a>
+                    <a href="#planner" class="nav-link flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200">
+                        <i class="fas fa-calendar-alt w-6 text-center"></i><span class="ml-4 font-semibold">Trip Planner</span>
+                    </a>
+                    <a href="#inspiration" class="nav-link flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200">
+                        <i class="fas fa-lightbulb w-6 text-center"></i><span class="ml-4 font-semibold">Inspiration</span>
+                        <span class="ml-auto text-xs bg-pink-100 text-pink-600 px-2 py-1 rounded-full">New</span>
+                    </a>
+                    <a href="#collaborate" class="nav-link flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200">
+                        <i class="fas fa-users w-6 text-center"></i><span class="ml-4 font-semibold">Collaborate</span>
+                    </a>
+                    <a href="#favorites" class="nav-link flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200">
+                        <i class="fas fa-heart w-6 text-center"></i><span class="ml-4 font-semibold">Favorites</span>
+                    </a>
+                    <a href="#profile" class="nav-link flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200">
+                        <i class="fas fa-user w-6 text-center"></i><span class="ml-4 font-semibold">Profile</span>
+                    </a>
+                    <a href="#settings" class="nav-link flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200">
+                        <i class="fas fa-cog w-6 text-center"></i><span class="ml-4 font-semibold">Settings</span>
+                    </a>
+                    <a href="#collaboration" class="nav-link flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200">
+                        <i class="fas fa-users w-6 text-center"></i><span class="ml-4 font-semibold">Collaborate</span>
+                    </a>
+                </nav>
+            </div>
+            <div class="space-y-4">
+                <div class="card p-4 bg-gradient-to-br from-purple-50 to-pink-50">
+                    <h3 class="font-bold text-gray-800 flex items-center">
+                        <i class="fas fa-magic text-purple-500 mr-2"></i> Need travel ideas?
+                    </h3>
+                    <p class="text-sm text-gray-600 mt-2">Get inspired by our curated destination guides.</p>
+                    <button class="btn-primary w-full mt-4 text-sm">Explore Guides</button>
+                </div>
+                <p class="text-xs text-center text-gray-500">© 2025 Wanderlust AI<br>Version 2.0</p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main id="main-content" class="main-content flex-1 h-screen overflow-y-auto">
+            <!-- Top Bar -->
+            <header class="sticky top-0 bg-white/80 backdrop-blur-md p-4 flex justify-between items-center z-30 shadow-sm">
+                <button id="menu-toggle" class="lg:hidden p-2 rounded-md hover:bg-gray-200 transition duration-200">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <div class="relative w-full max-w-md hidden md:block">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" placeholder="Search destinations, hotels..." class="bg-white/80 w-full pl-12 pr-4 py-2.5 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-400 border border-gray-200">
+                </div>
+                <div class="flex items-center space-x-6">
+                    <div class="relative">
+                        <button class="text-gray-600 hover:text-purple-600 transition duration-200 relative">
+                            <i class="fas fa-bell text-xl"></i>
+                            <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-xs flex items-center justify-center">3</span>
+                        </button>
+                    </div>
+                    <div class="relative group">
+                        <div class="flex items-center space-x-3 cursor-pointer">
+                            <img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" alt="User Avatar" class="w-10 h-10 rounded-full border-2 border-purple-300">
+                            <div class="hidden md:block">
+                                <p class="font-semibold text-sm">Sophia</p>
+                                <p class="text-xs text-gray-500">Travel Enthusiast</p>
+                            </div>
+                        </div>
+                        <div class="absolute right-0 top-full mt-2 w-48 bg-white shadow-lg rounded-lg overflow-hidden z-20 transform origin-top-right transition-all duration-200 scale-0 opacity-0 group-hover:scale-100 group-hover:opacity-100">
+                            <a href="#profile" class="block px-4 py-2 text-gray-700 hover:bg-purple-50"><i class="fas fa-user-circle mr-2"></i> My Profile</a>
+                            <a href="#settings" class="block px-4 py-2 text-gray-700 hover:bg-purple-50"><i class="fas fa-cog mr-2"></i> Settings</a>
+                            <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-purple-50"><i class="fas fa-sign-out-alt mr-2"></i> Logout</a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div id="page-container" class="p-6 lg:p-10 min-h-screen">
+                <!-- Pages will be dynamically rendered here -->
+                <!-- Default page will be loaded by the navigateTo function -->
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // API Keys configuration
+        const GEMINI_API_KEY = 'AIzaSyAPlZAyhfo-zQZ3CwqWVY5qNDeUNNmykK8';
+        const YOUTUBE_API_KEY = 'AIzaSyAX7JhyOzQ3A1CVcJdGj3MDRcr4-rms88c';
+        const GOOGLE_SEARCH_API_KEY = 'AIzaSyCwN0JyeRoYmWPUJCV4uzU8-I4G2Xu4xCs';
+        const GOOGLE_SEARCH_ENGINE_ID = 'f474a749d967b4e6c';
+        const PEXELS_API_KEY = 'SrBRDYgxAubQlJxzlgaDEcN4FSqBIz03opRa833uPBLDQftwIoOAQDOQ';
+        const OPENWEATHER_API_KEY = 'YOUR_OPENWEATHER_API_KEY'; // IMPORTANT: Add your OpenWeatherMap API key here
+
+        // Main page container reference
+        const pageContainer = document.getElementById('page-container');
+
+        // Page Templates - Each page is a separate HTML string
+        const pages = {
+            // Home page - Main landing page with AI assistant and trending destinations
+            home: `
+                <div id="home" class="page">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="lg:col-span-2">
+                            <div class="flex items-center gap-2 mb-4">
+                                <h2 class="text-3xl font-bold">Welcome to your travel hub</h2>
+                                <span class="badge badge-primary">Powered by AI</span>
+                            </div>
+                            <p class="text-gray-600 mb-8">Start planning your next adventure with our AI-powered assistant, leveraging cutting-edge technology to provide personalized recommendations.</p>
+                            <div class="card h-[600px] flex flex-col overflow-hidden">
+                                <div class="bg-gradient-to-r from-purple-500 to-pink-500 p-4 text-white">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <i class="fas fa-robot text-xl"></i>
+                                            <h3 class="font-bold">Travel Assistant</h3>
+                                        </div>
+                                        <div class="flex gap-2">
+                                            <button class="p-1.5 rounded-full hover:bg-white/20 transition"><i class="fas fa-sync-alt"></i></button>
+                                            <button class="p-1.5 rounded-full hover:bg-white/20 transition"><i class="fas fa-expand"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="chat-box" class="flex-1 p-6 overflow-y-auto space-y-4">
+                                    <div class="flex items-start gap-3">
+                                        <div class="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-2 rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0"><i class="fas fa-robot"></i></div>
+                                        <div class="chat-bubble-ai p-4 rounded-lg max-w-md">
+                                            <p>👋 Hello! I'm your AI travel assistant powered by Gemini. Ask me for destination ideas, flight options, or hotel recommendations for your next trip!</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="p-4 border-t bg-gray-50">
+                                    <div class="flex flex-wrap items-center gap-2 mb-2">
+                                        <button class="quick-prompt-btn bg-purple-100 text-purple-700 text-sm px-3 py-1 rounded-full hover:bg-purple-200 transition">Beach vacation in June</button>
+                                        <button class="quick-prompt-btn bg-purple-100 text-purple-700 text-sm px-3 py-1 rounded-full hover:bg-purple-200 transition">Cheap flights to Italy</button>
+                                        <button class="quick-prompt-btn bg-purple-100 text-purple-700 text-sm px-3 py-1 rounded-full hover:bg-purple-200 transition">Best hotels in Tokyo</button>
+                                    </div>
+                                    <div class="relative">
+                                        <input id="chat-input" type="text" placeholder="Ask about places, hotels, or flights..." class="w-full bg-white border border-gray-200 focus:ring-purple-500 focus:border-purple-500 rounded-full pl-5 pr-12 py-3">
+                                        <button id="chat-send-btn" class="absolute right-3 top-1/2 -translate-y-1/2 text-purple-600 hover:text-purple-800 transition"><i class="fas fa-paper-plane text-xl"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="space-y-8">
+                            <div class="card p-6">
+                                <h3 class="text-xl font-bold mb-4 flex items-center">
+                                    <i class="fas fa-chart-line text-purple-500 mr-2"></i>
+                                    Trending Destinations
+                                </h3>
+                                <div class="space-y-4">
+                                    <div class="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition cursor-pointer">
+                                        <img src="https://images.pexels.com/photos/161251/senso-ji-temple-japan-kyoto-holiday-161251.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" class="w-20 h-20 rounded-lg object-cover">
+                                        <div class="ml-4">
+                                            <div class="flex items-center gap-2">
+                                                <h4 class="font-semibold">Kyoto, Japan</h4>
+                                                <span class="badge badge-primary">+58%</span>
+                                            </div>
+                                            <p class="text-sm text-gray-500">Ancient temples & serene gardens.</p>
+                                            <div class="flex items-center gap-1 text-sm text-yellow-500 mt-1">
+                                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
+                                                <span class="text-gray-500 ml-1">4.8/5</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition cursor-pointer">
+                                        <img src="https://images.pexels.com/photos/1638463/pexels-photo-1638463.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" class="w-20 h-20 rounded-lg object-cover">
+                                        <div class="ml-4">
+                                            <div class="flex items-center gap-2">
+                                                <h4 class="font-semibold">Santorini, Greece</h4>
+                                                <span class="badge badge-secondary">+42%</span>
+                                            </div>
+                                            <p class="text-sm text-gray-500">Iconic sunsets and white villages.</p>
+                                            <div class="flex items-center gap-1 text-sm text-yellow-500 mt-1">
+                                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                                                <span class="text-gray-500 ml-1">4.9/5</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold mb-4 flex items-center">
+                                    <i class="fas fa-map-marked-alt text-pink-500 mr-2"></i>
+                                    Get Inspiration
+                                </h3>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="card p-4 text-center hover:bg-gray-50 transition cursor-pointer">
+                                        <i class="fas fa-umbrella-beach text-3xl text-pink-500 mb-2"></i>
+                                        <p class="font-semibold">Beach Escapes</p>
+                                        <p class="text-xs text-gray-500 mt-1">28 destinations</p>
+                                    </div>
+                                    <div class="card p-4 text-center hover:bg-gray-50 transition cursor-pointer">
+                                        <i class="fas fa-mountain text-3xl text-purple-500 mb-2"></i>
+                                        <p class="font-semibold">Mountain Adventures</p>
+                                        <p class="text-xs text-gray-500 mt-1">42 destinations</p>
+                                    </div>
+                                    <div class="card p-4 text-center hover:bg-gray-50 transition cursor-pointer">
+                                        <i class="fas fa-utensils text-3xl text-blue-500 mb-2"></i>
+                                        <p class="font-semibold">Food Tours</p>
+                                        <p class="text-xs text-gray-500 mt-1">16 destinations</p>
+                                    </div>
+                                    <div class="card p-4 text-center hover:bg-gray-50 transition cursor-pointer">
+                                        <i class="fas fa-landmark text-3xl text-amber-500 mb-2"></i>
+                                        <p class="font-semibold">Cultural Sites</p>
+                                        <p class="text-xs text-gray-500 mt-1">53 destinations</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `,
+            explore: `
+                <div id="explore" class="page">
+                    <div class="relative mb-8">
+                        <div class="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-500 rounded-xl opacity-90"></div>
+                        <div class="relative p-8 text-white">
+                            <h2 class="text-3xl font-bold mb-2">Explore Destinations</h2>
+                            <p class="text-white/90 max-w-2xl">Find your next adventure from our curated list of beautiful places around the world. Powered by Google Search API for the most up-to-date information.</p>
+                            <div class="mt-6 relative">
+                                <input type="text" id="destination-search" placeholder="Search for a destination..." class="w-full max-w-xl py-3 px-5 rounded-full text-gray-800 focus:outline-none focus:ring-2 focus:ring-white">
+                                <button id="search-btn" class="absolute right-2 top-1/2 -translate-y-1/2 bg-purple-700 text-white p-2 rounded-full hover:bg-purple-800 transition"><i class="fas fa-search"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-4 mb-6">
+                        <div class="flex items-center bg-white rounded-full px-4 py-2 shadow-sm">
+                            <i class="fas fa-globe-americas text-purple-500 mr-2"></i>
+                            <select class="bg-transparent rounded-full border-none focus:ring-0"> 
+                                <option>All Regions</option>
+                                <option>Asia</option>
+                                <option>Europe</option>
+                                <option>North America</option>
+                                <option>South America</option>
+                                <option>Africa</option>
+                                <option>Oceania</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center bg-white rounded-full px-4 py-2 shadow-sm">
+                            <i class="fas fa-dollar-sign text-green-500 mr-2"></i>
+                            <select class="bg-transparent rounded-full border-none focus:ring-0"> 
+                                <option>Any Budget</option>
+                                <option>Budget (< $50/day)</option>
+                                <option>Moderate ($50-150/day)</option>
+                                <option>Luxury (> $150/day)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center bg-white rounded-full px-4 py-2 shadow-sm">
+                            <i class="fas fa-hiking text-amber-500 mr-2"></i>
+                            <select class="bg-transparent rounded-full border-none focus:ring-0"> 
+                                <option>All Activities</option>
+                                <option>Beach & Relaxation</option>
+                                <option>Adventure & Outdoors</option>
+                                <option>Culture & History</option>
+                                <option>Food & Culinary</option>
+                                <option>Nightlife & Entertainment</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center bg-white rounded-full px-4 py-2 shadow-sm">
+                            <i class="fas fa-cloud-sun text-blue-500 mr-2"></i>
+                            <select class="bg-transparent rounded-full border-none focus:ring-0"> 
+                                <option>Any Weather</option>
+                                <option>Warm & Sunny</option>
+                                <option>Cool & Moderate</option>
+                                <option>Cold & Snowy</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="destinations-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                        <!-- Skeleton Loaders -->
+                        ${[...Array(8)].map(() => `
+                            <div class="card overflow-hidden">
+                                <div class="w-full h-48 skeleton-loader"></div>
+                                <div class="p-5">
+                                    <div class="h-6 w-3/4 mb-2 skeleton-loader"></div>
+                                    <div class="h-4 w-1/2 mb-4 skeleton-loader"></div>
+                                    <div class="h-10 w-full skeleton-loader"></div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="mt-10 flex justify-center">
+                        <button class="btn-primary flex items-center gap-2">
+                            <i class="fas fa-sync-alt"></i> Load More Destinations
+                        </button>
+                    </div>
+                </div>
+            `,
+            hotels: `
+                <div id="hotels" class="page">
+                    <div class="relative mb-8">
+                        <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-500 rounded-xl opacity-90"></div>
+                        <div class="relative p-8 text-white">
+                            <h2 class="text-3xl font-bold mb-2">Find the Perfect Hotel</h2>
+                            <p class="text-white/90 max-w-2xl">Search for accommodations that match your style and budget using our enhanced hotel search engine.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card p-6 mb-8">
+                        <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+                            <div class="md:col-span-2">
+                                <label class="font-semibold text-sm block mb-1">Destination</label>
+                                <div class="relative">
+                                    <i class="fas fa-map-marker-alt absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                    <input type="text" placeholder="e.g., Paris, France" class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 pl-10 focus:ring-blue-500">
+                                </div>
+                            </div>
+                            <div class="md:col-span-3 grid grid-cols-3 gap-4">
+                                <div>
+                                    <label class="font-semibold text-sm block mb-1">Check-in</label>
+                                    <div class="relative">
+                                        <i class="fas fa-calendar absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                        <input type="date" class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 pl-10 focus:ring-blue-500">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="font-semibold text-sm block mb-1">Check-out</label>
+                                    <div class="relative">
+                                        <i class="fas fa-calendar absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                        <input type="date" class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 pl-10 focus:ring-blue-500">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="font-semibold text-sm block mb-1">Guests</label>
+                                    <div class="relative">
+                                        <i class="fas fa-user-friends absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                        <input type="number" value="2" min="1" max="10" class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 pl-10 focus:ring-blue-500">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="md:col-span-1">
+                                <button class="btn-primary w-full flex items-center justify-center gap-2 py-3">
+                                    <i class="fas fa-search"></i> Search
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                        <div class="md:col-span-1">
+                            <div class="card p-6 sticky top-24">
+                                <h3 class="font-bold mb-4 flex items-center"><i class="fas fa-sliders-h text-blue-500 mr-2"></i> Filters</h3>
+                                
+                                <div class="border-b pb-4 mb-4">
+                                    <h4 class="font-semibold mb-2">Price Range</h4>
+                                    <div class="flex items-center justify-between text-sm mb-2">
+                                        <span>$50</span>
+                                        <span>$1000</span>
+                                    </div>
+                                    <input type="range" class="w-full accent-blue-500" min="50" max="1000" value="300">
+                                    <div class="mt-2 text-center text-sm font-semibold text-blue-600">
+                                        Up to $300 per night
+                                    </div>
+                                </div>
+                                
+                                <div class="border-b pb-4 mb-4">
+                                    <h4 class="font-semibold mb-2">Star Rating</h4>
+                                    <div class="space-y-2">
+                                        <label class="flex items-center"><input type="checkbox" class="form-checkbox rounded text-blue-500"> <span class="ml-2">5 Stars</span></label>
+                                        <label class="flex items-center"><input type="checkbox" class="form-checkbox rounded text-blue-500" checked> <span class="ml-2">4 Stars</span></label>
+                                        <label class="flex items-center"><input type="checkbox" class="form-checkbox rounded text-blue-500"> <span class="ml-2">3 Stars</span></label>
+                                        <label class="flex items-center"><input type="checkbox" class="form-checkbox rounded text-blue-500"> <span class="ml-2">2 Stars</span></label>
+                                    </div>
+                                </div>
+                                
+                                <div class="border-b pb-4 mb-4">
+                                    <h4 class="font-semibold mb-2">Amenities</h4>
+                                    <div class="space-y-2 text-sm">
+                                        <label class="flex items-center"><input type="checkbox" class="form-checkbox rounded text-blue-500" checked> <span class="ml-2">Free Wi-Fi</span></label>
+                                        <label class="flex items-center"><input type="checkbox" class="form-checkbox rounded text-blue-500" checked> <span class="ml-2">Swimming Pool</span></label>
+                                        <label class="flex items-center"><input type="checkbox" class="form-checkbox rounded text-blue-500"> <span class="ml-2">Spa</span></label>
+                                        <label class="flex items-center"><input type="checkbox" class="form-checkbox rounded text-blue-500"> <span class="ml-2">Pet Friendly</span></label>
+                                        <label class="flex items-center"><input type="checkbox" class="form-checkbox rounded text-blue-500"> <span class="ml-2">Restaurant</span></label>
+                                        <label class="flex items-center"><input type="checkbox" class="form-checkbox rounded text-blue-500"> <span class="ml-2">Room Service</span></label>
+                                        <label class="flex items-center"><input type="checkbox" class="form-checkbox rounded text-blue-500"> <span class="ml-2">Fitness Center</span></label>
+                                    </div>
+                                    <button class="text-blue-600 font-semibold text-sm mt-2 hover:underline">Show more</button>
+                                </div>
+                                
+                                <div>
+                                    <h4 class="font-semibold mb-2">Property Type</h4>
+                                    <div class="space-y-2 text-sm">
+                                        <label class="flex items-center"><input type="checkbox" class="form-checkbox rounded text-blue-500" checked> <span class="ml-2">Hotel</span></label>
+                                        <label class="flex items-center"><input type="checkbox" class="form-checkbox rounded text-blue-500"> <span class="ml-2">Apartment</span></label>
+                                        <label class="flex items-center"><input type="checkbox" class="form-checkbox rounded text-blue-500"> <span class="ml-2">Resort</span></label>
+                                        <label class="flex items-center"><input type="checkbox" class="form-checkbox rounded text-blue-500"> <span class="ml-2">Villa</span></label>
+                                    </div>
+                                </div>
+                                
+                                <button class="btn-secondary w-full mt-6">Apply Filters</button>
+                            </div>
+                        </div>
+                        
+                        <div class="md:col-span-3 space-y-6">
+                            <div class="flex items-center justify-between">
+                                <p class="text-gray-600"><span class="font-semibold text-gray-800">23</span> hotels found</p>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm text-gray-600">Sort by:</span>
+                                    <select class="bg-white border rounded-lg p-2 text-sm">
+                                        <option>Recommended</option>
+                                        <option>Price: Low to High</option>
+                                        <option>Price: High to Low</option>
+                                        <option>Rating</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            ${[
+                                {name: 'The Ritz-Carlton Luxury Suite', price: 750, img: 'https://images.pexels.com/photos/261102/pexels-photo-261102.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1', rating: 5, features: ['City Center', 'Sea View', 'Spa Access']},
+                                {name: 'Hotel Le Marais Boutique', price: 250, img: 'https://images.pexels.com/photos/271624/pexels-photo-271624.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1', rating: 4, features: ['Free Breakfast', 'Pool', 'Historic District']},
+                                {name: 'Palazzo Versace Grand Suite', price: 520, img: 'https://images.pexels.com/photos/1838554/pexels-photo-1838554.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1', rating: 5, features: ['Private Terrace', 'Butler Service', 'Gourmet Dining']},
+                            ].map(hotel => `
+                                <div class="card overflow-hidden hover:shadow-lg transition-all duration-300">
+                                    <div class="md:flex">
+                                        <div class="md:w-1/3 relative">
+                                            <img src="${hotel.img}" class="w-full h-48 md:h-full object-cover">
+                                            <span class="absolute top-2 left-2 bg-white/90 text-blue-600 font-bold px-2 py-1 rounded text-sm">
+                                                <i class="fas fa-camera mr-1"></i> 12+ Photos
+                                            </span>
+                                            ${hotel.rating === 5 ? '<span class="absolute top-2 right-2 bg-amber-400 text-white px-2 py-1 rounded text-sm font-bold">Premium</span>' : ''}
+                                        </div>
+                                        <div class="p-6 flex-1 flex flex-col justify-between">
+                                            <div>
+                                                <div class="flex justify-between items-start">
+                                                    <div>
+                                                        <h3 class="text-xl font-bold">${hotel.name}</h3>
+                                                        <div class="flex items-center text-yellow-400 my-2">
+                                                            ${Array(hotel.rating).fill('<i class="fas fa-star"></i>').join('')}${hotel.rating < 5 ? Array(5-hotel.rating).fill('<i class="far fa-star"></i>').join('') : ''}
+                                                            <span class="text-gray-600 ml-2 text-sm">(${Math.floor(Math.random() * 500) + 100} reviews)</span>
+                                                        </div>
+                                                    </div>
+                                                    <p class="text-xl font-bold text-blue-600">$${hotel.price}<span class="text-sm font-normal text-gray-500">/night</span></p>
+                                                </div>
+                                                <p class="text-gray-600 text-sm">A luxurious stay with breathtaking views and world-class service.</p>
+                                                <div class="flex flex-wrap gap-2 mt-3">
+                                                    ${hotel.features.map(feature => `<span class="bg-blue-50 text-blue-700 px-2 py-1 rounded-full text-xs">${feature}</span>`).join('')}
+                                                </div>
+                                            </div>
+                                            <div class="flex flex-wrap items-center justify-between mt-4 pt-4 border-t">
+                                                <div class="flex items-center text-green-600 mb-2 md:mb-0">
+                                                    <i class="fas fa-tag mr-1"></i>
+                                                    <span class="text-sm font-semibold">Free cancellation until Sep 15</span>
+                                                </div>
+                                                <div class="flex gap-2">
+                                                    <button class="border border-blue-600 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition flex items-center">
+                                                        <i class="far fa-heart mr-1"></i> Save
+                                                    </button>
+                                                    <button class="btn-primary">Book Now</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                            
+                            <div class="flex justify-center mt-8">
+                                <button class="btn-secondary flex items-center gap-2">
+                                    <i class="fas fa-spinner"></i> Load More Hotels
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `,
+            flights: `
+                <div id="flights" class="page">
+                    <div class="relative mb-8">
+                        <div class="absolute inset-0 bg-gradient-to-r from-sky-600 to-teal-500 rounded-xl opacity-90"></div>
+                        <div class="relative p-8 text-white">
+                            <h2 class="text-3xl font-bold mb-2">Find the Perfect Flight</h2>
+                            <p class="text-white/90 max-w-2xl">Search for flights across multiple airlines with our AI-powered flight search engine.</p>
+                        </div>
+                    </div>
+
+                    <div class="card p-6 mb-8">
+                        <div class="flex gap-4 mb-6 border-b pb-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="trip-type" class="form-radio text-sky-600" checked>
+                                <span class="font-medium">Round Trip</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="trip-type" class="form-radio text-sky-600">
+                                <span class="font-medium">One Way</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="trip-type" class="form-radio text-sky-600">
+                                <span class="font-medium">Multi-City</span>
+                            </label>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+                            <div class="lg:col-span-2 grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="font-semibold text-sm block mb-1">From</label>
+                                    <div class="relative">
+                                        <i class="fas fa-plane-departure absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                        <input type="text" value="New York (JFK)" class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 pl-10 focus:ring-sky-500">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="font-semibold text-sm block mb-1">To</label>
+                                    <div class="relative">
+                                        <i class="fas fa-plane-arrival absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                        <input type="text" value="Paris (CDG)" class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 pl-10 focus:ring-sky-500">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="lg:col-span-2 grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="font-semibold text-sm block mb-1">Departure</label>
+                                    <div class="relative">
+                                        <i class="fas fa-calendar absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                        <input type="date" class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 pl-10 focus:ring-sky-500">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="font-semibold text-sm block mb-1">Return</label>
+                                    <div class="relative">
+                                        <i class="fas fa-calendar-alt absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                        <input type="date" class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 pl-10 focus:ring-sky-500">
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="font-semibold text-sm block mb-1">Travelers</label>
+                                <div class="relative">
+                                    <i class="fas fa-user-friends absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                    <select class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 pl-10 focus:ring-sky-500">
+                                        <option>1 Adult</option>
+                                        <option>2 Adults</option>
+                                        <option>1 Adult, 1 Child</option>
+                                        <option>2 Adults, 1 Child</option>
+                                        <option>2 Adults, 2 Children</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="font-semibold text-sm block mb-1">Class</label>
+                                <div class="relative">
+                                    <i class="fas fa-chair absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                    <select class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 pl-10 focus:ring-sky-500">
+                                        <option>Economy</option>
+                                        <option>Premium Economy</option>
+                                        <option>Business</option>
+                                        <option>First Class</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-6 flex justify-end">
+                            <button class="btn-primary flex items-center gap-2 px-8">
+                                <i class="fas fa-search"></i> Search Flights
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap justify-center gap-4 mb-6">
+                        <button class="bg-sky-100 text-sky-800 font-semibold px-6 py-2 rounded-full flex items-center gap-2 hover:bg-sky-200 transition">
+                            <i class="fas fa-dollar-sign"></i> Cheapest
+                        </button>
+                        <button class="bg-white border border-gray-200 font-semibold px-6 py-2 rounded-full flex items-center gap-2 hover:bg-gray-50 transition">
+                            <i class="fas fa-bolt"></i> Fastest
+                        </button>
+                        <button class="bg-white border border-gray-200 font-semibold px-6 py-2 rounded-full flex items-center gap-2 hover:bg-gray-50 transition">
+                            <i class="fas fa-star"></i> Recommended
+                        </button>
+                        <button class="bg-white border border-gray-200 font-semibold px-6 py-2 rounded-full flex items-center gap-2 hover:bg-gray-50 transition">
+                            <i class="fas fa-leaf"></i> Eco-Friendly
+                        </button>
+                    </div>
+
+                    <div class="space-y-6">
+                        ${[
+                            { airline: 'Delta Airlines', logo: 'dl', price: 550, stops: 'Nonstop', duration: '8h 00m', departure: '10:00 AM', arrival: '12:00 PM', from: 'JFK', to: 'CDG', ecoFriendly: true },
+                            { airline: 'United Airlines', logo: 'ua', price: 480, stops: '1 Stop', duration: '9h 45m', departure: '8:30 AM', arrival: '11:15 PM', from: 'JFK', to: 'CDG', stopDetails: 'LHR (1h 30m)' },
+                            { airline: 'Air France', logo: 'af', price: 620, stops: 'Nonstop', duration: '7h 45m', departure: '6:15 PM', arrival: '8:00 AM', from: 'JFK', to: 'CDG', preferred: true },
+                        ].map(flight => `
+                            <div class="card p-6 hover:shadow-lg transition-all duration-300 ${flight.preferred ? 'border-l-4 border-sky-500' : ''}">
+                                <div class="grid grid-cols-12 items-center gap-4">
+                                    <div class="col-span-12 md:col-span-2 flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                                            <span class="font-bold text-gray-700">${flight.logo.toUpperCase()}</span>
+                                        </div>
+                                        <div>
+                                            <p class="font-bold">${flight.airline}</p>
+                                            <p class="text-xs text-gray-500">Flight ${Math.floor(Math.random() * 1000) + 1000}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-span-12 md:col-span-3 flex flex-col items-center md:items-start">
+                                        <div class="flex items-center gap-3">
+                                            <p class="text-xl font-bold">${flight.departure}</p>
+                                            <div class="flex flex-col items-center px-2">
+                                                <div class="w-16 h-0.5 bg-gray-300 relative">
+                                                    ${flight.stops === 'Nonstop' ? '' : `<div class="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 rounded-full bg-gray-400"></div>`}
+                                                </div>
+                                                <p class="text-xs text-gray-500 mt-1">${flight.stops}</p>
+                                            </div>
+                                            <p class="text-xl font-bold">${flight.arrival}</p>
+                                        </div>
+                                        <div class="flex justify-between w-full text-xs text-gray-500 mt-1">
+                                            <span>${flight.from}</span>
+                                            <span class="text-center">${flight.duration}</span>
+                                            <span>${flight.to}</span>
+                                        </div>
+                                        ${flight.stops !== 'Nonstop' ? `<p class="text-xs text-gray-500 mt-1">Stop: ${flight.stopDetails}</p>` : ''}
+                                    </div>
+                                    
+                                    <div class="col-span-6 md:col-span-3 flex flex-wrap gap-2">
+                                        ${flight.ecoFriendly ? `<span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs flex items-center gap-1"><i class="fas fa-leaf"></i> Low Emissions</span>` : ''}
+                                        ${flight.preferred ? `<span class="bg-sky-100 text-sky-700 px-2 py-1 rounded-full text-xs flex items-center gap-1"><i class="fas fa-thumbs-up"></i> Recommended</span>` : ''}
+                                        <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs">In-flight Wifi</span>
+                                        <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs">USB Power</span>
+                                    </div>
+                                    
+                                    <div class="col-span-6 md:col-span-2 text-center md:text-left">
+                                        <p class="font-bold text-2xl text-sky-600">$${flight.price}</p>
+                                        <p class="text-xs text-gray-500">Round Trip, per person</p>
+                                    </div>
+                                    
+                                    <div class="col-span-12 md:col-span-2 flex justify-center md:justify-end">
+                                        <button class="btn-primary w-full md:w-auto">Select</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                        
+                        <div class="flex justify-center mt-8">
+                            <button class="btn-secondary flex items-center gap-2">
+                                <i class="fas fa-spinner"></i> Load More Flights
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `,
+            planner: `
+                <div id="planner" class="page">
+                    <div class="relative mb-8">
+                        <div class="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-500 rounded-xl opacity-90"></div>
+                        <div class="relative p-8 text-white">
+                            <h2 class="text-3xl font-bold mb-2">Trip Planner</h2>
+                            <p class="text-white/90 max-w-2xl">Create personalized itineraries with our AI-powered planner using Gemini and Google Search.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+                        <div class="card p-6 lg:col-span-1">
+                            <h3 class="text-xl font-bold mb-6">Plan New Trip</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="font-semibold text-sm block mb-1">Destination</label>
+                                    <div class="relative">
+                                        <i class="fas fa-map-marker-alt absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                        <input id="trip-destination" type="text" placeholder="e.g., Paris, France" class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 pl-10 focus:ring-indigo-500">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="font-semibold text-sm block mb-1">Start Date</label>
+                                        <div class="relative">
+                                            <i class="fas fa-calendar absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                            <input id="trip-start" type="date" class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 pl-10 focus:ring-indigo-500">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="font-semibold text-sm block mb-1">End Date</label>
+                                        <div class="relative">
+                                            <i class="fas fa-calendar-alt absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                            <input id="trip-end" type="date" class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 pl-10 focus:ring-indigo-500">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="font-semibold text-sm block mb-1">Trip Style</label>
+                                    <div class="relative">
+                                        <i class="fas fa-tag absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                        <select id="trip-style" class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 pl-10 focus:ring-indigo-500">
+                                            <option>Sightseeing</option>
+                                            <option>Adventure</option>
+                                            <option>Relaxation</option>
+                                            <option>Culinary</option>
+                                            <option>Cultural</option>
+                                            <option>Family-friendly</option>
+                                            <option>Budget</option>
+                                            <option>Luxury</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="font-semibold text-sm block mb-1">Number of Travelers</label>
+                                    <div class="relative">
+                                        <i class="fas fa-user-friends absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                        <input id="trip-travelers" type="number" min="1" value="2" class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 pl-10 focus:ring-indigo-500">
+                                    </div>
+                                </div>
+                                <button id="generate-trip-btn" class="btn-primary w-full flex items-center justify-center gap-2">
+                                    <i class="fas fa-magic"></i> Generate Trip Itinerary
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="lg:col-span-2">
+                            <div class="flex justify-between items-center mb-6">
+                                <div>
+                                    <h2 class="text-2xl font-bold">Trip to Paris</h2>
+                                    <p class="text-gray-600">July 15 - July 20, 2025</p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button class="btn-secondary"><i class="fas fa-share-alt mr-2"></i>Share</button>
+                                    <button class="btn-secondary"><i class="fas fa-download mr-2"></i>Export</button>
+                                </div>
+                            </div>
+                            
+                            <div class="relative pl-8 space-y-6 border-l-2 border-purple-200">
+                                <!-- Day 1 -->
+                                <div class="card p-6 relative hover:shadow-lg transition-all duration-300">
+                                    <div class="absolute -left-12 top-6 w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-full flex items-center justify-center border-4 border-white">
+                                        <i class="fas fa-plane-departure"></i>
+                                    </div>
+                                    <div class="flex justify-between items-start">
+                                        <h3 class="font-bold text-lg">Day 1: Arrival and Eiffel Tower</h3>
+                                        <button class="text-gray-400 hover:text-purple-600"><i class="fas fa-edit"></i></button>
+                                    </div>
+                                    <p class="text-sm text-gray-500 mt-1 mb-3">Monday, July 15, 2025</p>
+                                    <div class="space-y-3">
+                                        <div class="flex items-start gap-3">
+                                            <div class="bg-indigo-100 text-indigo-700 p-1 rounded flex-shrink-0 mt-0.5"><i class="fas fa-plane text-sm"></i></div>
+                                            <div>
+                                                <p class="font-medium">Arrive at Charles de Gaulle Airport (CDG)</p>
+                                                <p class="text-sm text-gray-500">10:00 AM - Take a taxi to your hotel (approximately €60)</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-start gap-3">
+                                            <div class="bg-purple-100 text-purple-700 p-1 rounded flex-shrink-0 mt-0.5"><i class="fas fa-hotel text-sm"></i></div>
+                                            <div>
+                                                <p class="font-medium">Check in to Hotel Le Marais</p>
+                                                <p class="text-sm text-gray-500">1:00 PM - 4-star boutique hotel in the heart of Paris</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-start gap-3">
+                                            <div class="bg-pink-100 text-pink-700 p-1 rounded flex-shrink-0 mt-0.5"><i class="fas fa-monument text-sm"></i></div>
+                                            <div>
+                                                <p class="font-medium">Visit the Eiffel Tower</p>
+                                                <p class="text-sm text-gray-500">5:00 PM - Book summit access tickets in advance (€29.40/adult)</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-start gap-3">
+                                            <div class="bg-red-100 text-red-700 p-1 rounded flex-shrink-0 mt-0.5"><i class="fas fa-utensils text-sm"></i></div>
+                                            <div>
+                                                <p class="font-medium">Dinner at Les Ombres</p>
+                                                <p class="text-sm text-gray-500">8:00 PM - Rooftop restaurant with Eiffel Tower views</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Day 2 -->
+                                <div class="card p-6 relative hover:shadow-lg transition-all duration-300">
+                                    <div class="absolute -left-12 top-6 w-10 h-10 bg-gradient-to-br from-pink-500 to-rose-600 text-white rounded-full flex items-center justify-center border-4 border-white">
+                                        <i class="fas fa-landmark"></i>
+                                    </div>
+                                    <div class="flex justify-between items-start">
+                                        <h3 class="font-bold text-lg">Day 2: Louvre and Seine River Cruise</h3>
+                                        <button class="text-gray-400 hover:text-purple-600"><i class="fas fa-edit"></i></button>
+                                    </div>
+                                    <p class="text-sm text-gray-500 mt-1 mb-3">Tuesday, July 16, 2025</p>
+                                    <div class="space-y-3">
+                                        <div class="flex items-start gap-3">
+                                            <div class="bg-yellow-100 text-yellow-700 p-1 rounded flex-shrink-0 mt-0.5"><i class="fas fa-coffee text-sm"></i></div>
+                                            <div>
+                                                <p class="font-medium">Breakfast at Café de Flore</p>
+                                                <p class="text-sm text-gray-500">9:00 AM - Iconic café frequented by Parisian intellectuals</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-start gap-3">
+                                            <div class="bg-blue-100 text-blue-700 p-1 rounded flex-shrink-0 mt-0.5"><i class="fas fa-palette text-sm"></i></div>
+                                            <div>
+                                                <p class="font-medium">Visit the Louvre Museum</p>
+                                                <p class="text-sm text-gray-500">11:00 AM - See the Mona Lisa and Venus de Milo (€17/adult)</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-start gap-3">
+                                            <div class="bg-green-100 text-green-700 p-1 rounded flex-shrink-0 mt-0.5"><i class="fas fa-ship text-sm"></i></div>
+                                            <div>
+                                                <p class="font-medium">Seine River Cruise</p>
+                                                <p class="text-sm text-gray-500">6:00 PM - Sunset cruise with champagne (€35/person)</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Day 3 -->
+                                <div class="card p-6 relative hover:shadow-lg transition-all duration-300">
+                                    <div class="absolute -left-12 top-6 w-10 h-10 bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-full flex items-center justify-center border-4 border-white">
+                                        <i class="fas fa-palette"></i>
+                                    </div>
+                                    <div class="flex justify-between items-start">
+                                        <h3 class="font-bold text-lg">Day 3: Montmartre and Sacré-Cœur</h3>
+                                        <button class="text-gray-400 hover:text-purple-600"><i class="fas fa-edit"></i></button>
+                                    </div>
+                                    <p class="text-sm text-gray-500 mt-1 mb-3">Wednesday, July 17, 2025</p>
+                                    <div class="space-y-3">
+                                        <div class="flex items-start gap-3">
+                                            <div class="bg-purple-100 text-purple-700 p-1 rounded flex-shrink-0 mt-0.5"><i class="fas fa-church text-sm"></i></div>
+                                            <div>
+                                                <p class="font-medium">Visit Sacré-Cœur Basilica</p>
+                                                <p class="text-sm text-gray-500">10:00 AM - Free entry, €6 for dome access</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-start gap-3">
+                                            <div class="bg-pink-100 text-pink-700 p-1 rounded flex-shrink-0 mt-0.5"><i class="fas fa-store-alt text-sm"></i></div>
+                                            <div>
+                                                <p class="font-medium">Explore Place du Tertre</p>
+                                                <p class="text-sm text-gray-500">1:00 PM - Artist square with portrait painters</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex justify-center">
+                                    <button class="btn-secondary flex items-center gap-2">
+                                        <i class="fas fa-plus"></i> Show More Days
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card p-6 mb-8">
+                        <h3 class="text-xl font-bold mb-4 flex items-center">
+                            <i class="fas fa-search text-purple-600 mr-2"></i> Paris Travel Information
+                            <span class="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">Powered by Google Search</span>
+                        </h3>
+                        
+                        <div class="space-y-6">
+                            <div>
+                                <h4 class="font-semibold mb-2">Weather in July</h4>
+                                <p class="text-gray-600">July is typically warm and sunny in Paris with average temperatures ranging from 16°C to 25°C (61°F to 77°F). It's one of the hottest months of the year, so light clothing is recommended.</p>
+                            </div>
+                            
+                            <div>
+                                <h4 class="font-semibold mb-2">Local Transportation</h4>
+                                <p class="text-gray-600">Paris has an excellent public transportation system including the Metro, buses, and RER trains. Consider purchasing a Paris Visite pass for unlimited travel (€12 for 1 day, zone 1-3).</p>
+                            </div>
+                            
+                            <div>
+                                <h4 class="font-semibold mb-2">Must-Visit Attractions</h4>
+                                <div class="flex flex-wrap gap-2 mt-1">
+                                    <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-sm">Eiffel Tower</span>
+                                    <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-sm">Louvre Museum</span>
+                                    <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-sm">Notre-Dame Cathedral</span>
+                                    <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-sm">Arc de Triomphe</span>
+                                    <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-sm">Montmartre</span>
+                                    <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-sm">Luxembourg Gardens</span>
+                                    <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-sm">Musée d'Orsay</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button id="load-more-info" class="mt-4 text-purple-600 font-semibold flex items-center hover:underline">
+                            <i class="fas fa-sync-alt mr-1"></i> Load More Information
+                        </button>
+                    </div>
+                </div>
+            `,
+            inspiration: `
+                <div id="inspiration" class="page">
+                    <div class="relative mb-8">
+                        <div class="absolute inset-0 bg-gradient-to-r from-pink-600 to-orange-400 rounded-xl opacity-90"></div>
+                        <div class="relative p-8 text-white">
+                            <div class="flex items-center gap-3 mb-2">
+                                <h2 class="text-3xl font-bold">Inspiration Feed</h2>
+                                <span class="badge badge-accent">New</span>
+                            </div>
+                            <p class="text-white/90 max-w-2xl">Discover articles, experiences, videos and ideas for your next trip.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-10">
+                        <h3 class="text-2xl font-bold mb-6 flex items-center">
+                            <i class="fab fa-youtube text-red-600 mr-3"></i> Featured Travel Videos
+                        </h3>
+                        <div id="youtube-videos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div class="card overflow-hidden hover:shadow-lg transition-all duration-300">
+                                <div class="relative">
+                                    <img src="https://i.ytimg.com/vi/bD0KaJ6Upi4/hqdefault.jpg" class="w-full h-48 object-cover">
+                                    <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                        <i class="fas fa-play-circle text-4xl text-white"></i>
+                                    </div>
+                                </div>
+                                <div class="p-4">
+                                    <h4 class="font-bold">10 Places You Need To Visit In Europe</h4>
+                                    <p class="text-gray-600 text-sm mt-1">Discover the must-visit destinations across Europe's stunning landscapes and historic cities.</p>
+                                    <div class="flex items-center justify-between mt-3">
+                                        <p class="text-sm text-gray-500">10M views</p>
+                                        <button class="text-red-600 hover:text-red-700"><i class="fas fa-external-link-alt"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card overflow-hidden hover:shadow-lg transition-all duration-300">
+                                <div class="relative">
+                                    <img src="https://i.ytimg.com/vi/AM0GGY-98Sg/hqdefault.jpg" class="w-full h-48 object-cover">
+                                    <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                        <i class="fas fa-play-circle text-4xl text-white"></i>
+                                    </div>
+                                </div>
+                                <div class="p-4">
+                                    <h4 class="font-bold">Japan Travel Guide: Tokyo, Kyoto, Osaka</h4>
+                                    <p class="text-gray-600 text-sm mt-1">Experience the perfect blend of tradition and modernity in Japan's iconic cities.</p>
+                                    <div class="flex items-center justify-between mt-3">
+                                        <p class="text-sm text-gray-500">5.7M views</p>
+                                        <button class="text-red-600 hover:text-red-700"><i class="fas fa-external-link-alt"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card overflow-hidden hover:shadow-lg transition-all duration-300">
+                                <div class="relative">
+                                    <img src="https://i.ytimg.com/vi/3SsK-cxlj_w/hqdefault.jpg" class="w-full h-48 object-cover">
+                                    <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                        <i class="fas fa-play-circle text-4xl text-white"></i>
+                                    </div>
+                                </div>
+                                <div class="p-4">
+                                    <h4 class="font-bold">Bali: Island Paradise Travel Guide</h4>
+                                    <p class="text-gray-600 text-sm mt-1">Explore the breathtaking beaches, lush landscapes, and spiritual retreats of Bali.</p>
+                                    <div class="flex items-center justify-between mt-3">
+                                        <p class="text-sm text-gray-500">8.3M views</p>
+                                        <button class="text-red-600 hover:text-red-700"><i class="fas fa-external-link-alt"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex justify-center">
+                            <button id="load-more-videos" class="btn-secondary flex items-center gap-2">
+                                <i class="fas fa-sync-alt"></i> Load More Videos
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <h3 class="text-2xl font-bold mb-6 flex items-center">
+                        <i class="fas fa-book-open text-purple-600 mr-3"></i> Travel Articles & Guides
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        ${[
+                            {title: 'Hidden Gems of the Scottish Highlands', cat: 'Adventure', img: 'https://images.pexels.com/photos/1590141/pexels-photo-1590141.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'},
+                            {title: 'A Family Adventure in the Swiss Alps', cat: 'Family', img: 'https://images.pexels.com/photos/772693/pexels-photo-772693.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'},
+                            {title: 'Luxury Getaway in the Maldives', cat: 'Luxury', img: 'https://images.pexels.com/photos/1483053/pexels-photo-1483053.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'},
+                            {title: 'Backpacking Through Southeast Asia', cat: 'Budget', img: 'https://images.pexels.com/photos/2662216/pexels-photo-2662216.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'},
+                            {title: 'Exploring the Ancient Wonders of Peru', cat: 'Adventure', img: 'https://images.pexels.com/photos/2085831/pexels-photo-2085831.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'},
+                            {title: 'Romantic Escape to the Italian Coast', cat: 'Luxury', img: 'https://images.pexels.com/photos/1638324/pexels-photo-1638324.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'}
+                        ].map(item => `
+                            <div class="card overflow-hidden hover:shadow-lg transition-all duration-300">
+                                <img src="${item.img}" class="w-full h-48 object-cover">
+                                <div class="p-6">
+                                    <p class="text-purple-600 font-semibold text-sm">${item.cat.toUpperCase()}</p>
+                                    <h3 class="text-xl font-bold mt-1 mb-2">${item.title}</h3>
+                                    <p class="text-gray-600 text-sm mb-4">Explore rugged beauty and create unforgettable memories.</p>
+                                    <div class="flex items-center justify-between">
+                                        <a href="#" class="font-semibold text-purple-600 hover:underline">Read More &rarr;</a>
+                                        <button class="text-gray-400 hover:text-pink-500 transition"><i class="far fa-heart"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `,
+             favorites: `
+                <div id="favorites" class="page">
+                    <h2 class="text-3xl font-bold mb-8">Saved Items</h2>
+                    <div class="flex border-b mb-6">
+                        <button class="py-2 px-4 text-purple-600 border-b-2 border-purple-600 font-semibold">Hotels</button>
+                        <button class="py-2 px-4 text-gray-500 hover:text-purple-600">Flights</button>
+                        <button class="py-2 px-4 text-gray-500 hover:text-purple-600">Destinations</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        ${[...Array(6)].map((_, i) => `
+                        <div class="card">
+                            <img src="https://images.pexels.com/photos/271643/pexels-photo-271643.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" class="w-full h-48 object-cover rounded-t-lg">
+                            <div class="p-4 flex justify-between items-center">
+                                <h3 class="font-bold">The Grand Budapest Hotel</h3>
+                                <button class="text-pink-500 hover:text-pink-700"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `,
+            profile: `
+                <div id="profile" class="page">
+                    <div class="card p-8 flex flex-col md:flex-row items-center gap-8 mb-8">
+                        <img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" class="w-24 h-24 rounded-full">
+                        <div>
+                            <h2 class="text-3xl font-bold">Sophia Carter</h2>
+                            <p class="text-gray-600">Travel enthusiast, exploring the world one city at a time. ✈️</p>
+                            <p class="text-sm text-gray-500 mt-2">Joined in 2021</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="card p-6 text-center">
+                            <p class="text-4xl font-bold text-purple-600">12</p>
+                            <p class="text-gray-500">Trips Planned</p>
+                        </div>
+                        <div class="card p-6 text-center">
+                             <p class="text-4xl font-bold text-pink-600">8</p>
+                            <p class="text-gray-500">Destinations Visited</p>
+                        </div>
+                    </div>
+                     <div class="card p-6 mt-8">
+                        <h3 class="font-bold text-xl mb-4">Upcoming Trips</h3>
+                        <div class="card flex items-center p-4">
+                           <img src="https://images.pexels.com/photos/161251/senso-ji-temple-japan-kyoto-holiday-161251.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" class="w-24 h-24 rounded-lg object-cover">
+                           <div class="ml-4">
+                               <h4 class="font-bold">Trip to Kyoto</h4>
+                               <p class="text-sm text-gray-500">October 10 - October 18, 2024</p>
+                               <button class="mt-2 text-sm font-semibold text-purple-600 hover:underline">View Itinerary &rarr;</button>
+                           </div>
+                        </div>
+                    </div>
+                </div>
+            `,
+            collaborate: `
+                <div id="collaborate" class="page">
+                    <div class="relative mb-8">
+                        <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-700 rounded-xl opacity-90"></div>
+                        <div class="relative p-8 text-white">
+                            <h2 class="text-3xl font-bold mb-2">Plan Together</h2>
+                            <p class="text-white/90 max-w-2xl">Collaborate with friends and family to create the perfect trip itinerary.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+                        <!-- Current Collaborations -->
+                        <div class="lg:col-span-2 space-y-6">
+                            <div class="card p-6">
+                                <div class="flex justify-between items-center mb-6">
+                                    <h3 class="text-xl font-bold">Your Collaborations</h3>
+                                    <button class="btn-primary-sm">
+                                        <i class="fas fa-plus mr-2"></i> Create New
+                                    </button>
+                                </div>
+                                
+                                <!-- Active collaboration 1 -->
+                                <div class="card border border-gray-200 hover:shadow-md transition mb-4">
+                                    <div class="p-5">
+                                        <div class="flex justify-between items-start">
+                                            <div>
+                                                <h4 class="font-bold text-lg">Summer in Tokyo</h4>
+                                                <div class="flex items-center text-gray-500 text-sm mt-1">
+                                                    <span class="flex items-center">
+                                                        <i class="far fa-calendar-alt mr-1"></i> 
+                                                        Jun 15-28, 2025
+                                                    </span>
+                                                    <span class="mx-3">•</span>
+                                                    <span class="flex items-center">
+                                                        <i class="fas fa-users mr-1"></i>
+                                                        4 collaborators
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Active</span>
+                                        </div>
+                                        
+                                        <div class="flex -space-x-2 mt-4">
+                                            <img src="https://i.pravatar.cc/40?u=a042581f4e29026704d" class="w-8 h-8 rounded-full border-2 border-white" title="You">
+                                            <img src="https://i.pravatar.cc/40?u=a042581f4e29026704e" class="w-8 h-8 rounded-full border-2 border-white" title="Emma Watson">
+                                            <img src="https://i.pravatar.cc/40?u=a042581f4e29026704f" class="w-8 h-8 rounded-full border-2 border-white" title="James Smith">
+                                            <img src="https://i.pravatar.cc/40?u=a042581f4e29026704g" class="w-8 h-8 rounded-full border-2 border-white" title="Olivia Johnson">
+                                        </div>
+                                        
+                                        <div class="flex mt-4 pt-4 border-t">
+                                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                                <div class="bg-blue-600 h-2.5 rounded-full" style="width: 65%"></div>
+                                            </div>
+                                            <span class="text-sm font-medium text-gray-500 ml-2">65%</span>
+                                        </div>
+                                        
+                                        <div class="flex justify-between mt-4">
+                                            <button class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                                Continue Planning
+                                            </button>
+                                            <button class="text-gray-500 hover:text-gray-700 text-sm">
+                                                <i class="fas fa-ellipsis-h"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Active collaboration 2 -->
+                                <div class="card border border-gray-200 hover:shadow-md transition mb-4">
+                                    <div class="p-5">
+                                        <div class="flex justify-between items-start">
+                                            <div>
+                                                <h4 class="font-bold text-lg">Road Trip: Pacific Coast Highway</h4>
+                                                <div class="flex items-center text-gray-500 text-sm mt-1">
+                                                    <span class="flex items-center">
+                                                        <i class="far fa-calendar-alt mr-1"></i> 
+                                                        Aug 5-15, 2025
+                                                    </span>
+                                                    <span class="mx-3">•</span>
+                                                    <span class="flex items-center">
+                                                        <i class="fas fa-users mr-1"></i>
+                                                        2 collaborators
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Active</span>
+                                        </div>
+                                        
+                                        <div class="flex -space-x-2 mt-4">
+                                            <img src="https://i.pravatar.cc/40?u=a042581f4e29026704d" class="w-8 h-8 rounded-full border-2 border-white" title="You">
+                                            <img src="https://i.pravatar.cc/40?u=a042581f4e29026704h" class="w-8 h-8 rounded-full border-2 border-white" title="Daniel Brown">
+                                        </div>
+                                        
+                                        <div class="flex mt-4 pt-4 border-t">
+                                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                                <div class="bg-blue-600 h-2.5 rounded-full" style="width: 35%"></div>
+                                            </div>
+                                            <span class="text-sm font-medium text-gray-500 ml-2">35%</span>
+                                        </div>
+                                        
+                                        <div class="flex justify-between mt-4">
+                                            <button class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                                Continue Planning
+                                            </button>
+                                            <button class="text-gray-500 hover:text-gray-700 text-sm">
+                                                <i class="fas fa-ellipsis-h"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Past collaboration -->
+                                <div class="card border border-gray-200 hover:shadow-md transition opacity-75">
+                                    <div class="p-5">
+                                        <div class="flex justify-between items-start">
+                                            <div>
+                                                <h4 class="font-bold text-lg">Barcelona Weekend</h4>
+                                                <div class="flex items-center text-gray-500 text-sm mt-1">
+                                                    <span class="flex items-center">
+                                                        <i class="far fa-calendar-alt mr-1"></i> 
+                                                        Mar 12-15, 2025
+                                                    </span>
+                                                    <span class="mx-3">•</span>
+                                                    <span class="flex items-center">
+                                                        <i class="fas fa-users mr-1"></i>
+                                                        3 collaborators
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Completed</span>
+                                        </div>
+                                        
+                                        <div class="flex -space-x-2 mt-4">
+                                            <img src="https://i.pravatar.cc/40?u=a042581f4e29026704d" class="w-8 h-8 rounded-full border-2 border-white" title="You">
+                                            <img src="https://i.pravatar.cc/40?u=a042581f4e29026704j" class="w-8 h-8 rounded-full border-2 border-white" title="Sophia Williams">
+                                            <img src="https://i.pravatar.cc/40?u=a042581f4e29026704k" class="w-8 h-8 rounded-full border-2 border-white" title="Noah Davis">
+                                        </div>
+                                        
+                                        <div class="flex mt-4 pt-4 border-t">
+                                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                                <div class="bg-gray-600 h-2.5 rounded-full" style="width: 100%"></div>
+                                            </div>
+                                            <span class="text-sm font-medium text-gray-500 ml-2">100%</span>
+                                        </div>
+                                        
+                                        <div class="flex justify-between mt-4">
+                                            <button class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                                View Itinerary
+                                            </button>
+                                            <button class="text-gray-500 hover:text-gray-700 text-sm">
+                                                <i class="fas fa-ellipsis-h"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Sidebar -->
+                        <div class="space-y-6">
+                            <!-- Collaboration features -->
+                            <div class="card p-6">
+                                <h3 class="text-lg font-bold mb-4">Collaboration Features</h3>
+                                <ul class="space-y-3">
+                                    <li class="flex">
+                                        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                                            <i class="fas fa-users"></i>
+                                        </div>
+                                        <div class="ml-3">
+                                            <h4 class="font-medium">Real-time Planning</h4>
+                                            <p class="text-sm text-gray-500">Plan together with friends in real-time</p>
+                                        </div>
+                                    </li>
+                                    <li class="flex">
+                                        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
+                                            <i class="fas fa-comment-alt"></i>
+                                        </div>
+                                        <div class="ml-3">
+                                            <h4 class="font-medium">Chat & Comments</h4>
+                                            <p class="text-sm text-gray-500">Discuss ideas with built-in messaging</p>
+                                        </div>
+                                    </li>
+                                    <li class="flex">
+                                        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                                            <i class="fas fa-vote-yea"></i>
+                                        </div>
+                                        <div class="ml-3">
+                                            <h4 class="font-medium">Voting System</h4>
+                                            <p class="text-sm text-gray-500">Decide on activities democratically</p>
+                                        </div>
+                                    </li>
+                                    <li class="flex">
+                                        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+                                            <i class="fas fa-tasks"></i>
+                                        </div>
+                                        <div class="ml-3">
+                                            <h4 class="font-medium">Task Assignment</h4>
+                                            <p class="text-sm text-gray-500">Assign planning tasks to team members</p>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                            
+                            <!-- Invitations -->
+                            <div class="card p-6">
+                                <h3 class="text-lg font-bold mb-4">Pending Invitations</h3>
+                                <div class="space-y-4">
+                                    <div class="border rounded-lg p-4">
+                                        <div class="flex items-start justify-between">
+                                            <div>
+                                                <h4 class="font-medium">Winter Holiday in Switzerland</h4>
+                                                <p class="text-sm text-gray-500">From: Alex Johnson</p>
+                                                <p class="text-xs text-gray-400 mt-1">Dec 20-28, 2025 • 4 members</p>
+                                            </div>
+                                            <img src="https://i.pravatar.cc/40?u=a042581f4e29026704m" class="w-10 h-10 rounded-full border-2 border-white">
+                                        </div>
+                                        <div class="flex space-x-2 mt-3">
+                                            <button class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-1.5 text-sm font-medium">Accept</button>
+                                            <button class="w-1/2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg py-1.5 text-sm font-medium">Decline</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Recent activity -->
+                            <div class="card p-6">
+                                <h3 class="text-lg font-bold mb-4">Recent Activity</h3>
+                                <div class="space-y-4">
+                                    <div class="flex items-start">
+                                        <img src="https://i.pravatar.cc/40?u=a042581f4e29026704e" class="w-8 h-8 rounded-full mr-3">
+                                        <div>
+                                            <p class="text-sm"><span class="font-medium">Emma</span> added a new hotel option to <span class="text-blue-600">Summer in Tokyo</span></p>
+                                            <p class="text-xs text-gray-500">2 hours ago</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start">
+                                        <img src="https://i.pravatar.cc/40?u=a042581f4e29026704h" class="w-8 h-8 rounded-full mr-3">
+                                        <div>
+                                            <p class="text-sm"><span class="font-medium">Daniel</span> commented on the itinerary in <span class="text-blue-600">Road Trip: Pacific Coast Highway</span></p>
+                                            <p class="text-xs text-gray-500">Yesterday</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start">
+                                        <img src="https://i.pravatar.cc/40?u=a042581f4e29026704f" class="w-8 h-8 rounded-full mr-3">
+                                        <div>
+                                            <p class="text-sm"><span class="font-medium">James</span> created a poll in <span class="text-blue-600">Summer in Tokyo</span></p>
+                                            <p class="text-xs text-gray-500">2 days ago</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="text-blue-600 hover:underline text-sm font-medium mt-3 block">View All Activity</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Create New Collaboration Modal Trigger -->
+                    <div class="text-center py-8">
+                        <h3 class="text-xl font-bold mb-2">Start a New Trip Collaboration</h3>
+                        <p class="text-gray-500 mb-6 max-w-lg mx-auto">Invite friends and family to plan your next adventure together. Assign tasks, vote on destinations, and create the perfect itinerary as a team.</p>
+                        <button class="btn-primary" onclick="alert('Create new collaboration feature coming soon!')">
+                            <i class="fas fa-plus mr-2"></i> Create New Collaboration
+                        </button>
+                    </div>
+                </div>
+            `,
+            settings: `
+                <div id="settings" class="page">
+                    <div class="relative mb-8">
+                        <div class="absolute inset-0 bg-gradient-to-r from-gray-700 to-gray-900 rounded-xl opacity-90"></div>
+                        <div class="relative p-8 text-white">
+                            <h2 class="text-3xl font-bold mb-2">Account Settings</h2>
+                            <p class="text-white/90 max-w-2xl">Manage your profile, preferences, and application settings.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-6">
+                        <div class="lg:col-span-1">
+                            <div class="sticky top-24">
+                                <div class="bg-white rounded-xl shadow-sm p-4 mb-4">
+                                    <div class="flex flex-col items-center">
+                                        <img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" class="w-24 h-24 rounded-full border-4 border-purple-200">
+                                        <h3 class="font-bold mt-2">Sophia Carter</h3>
+                                        <p class="text-sm text-gray-500">Premium Member</p>
+                                        <button class="text-sm text-purple-600 hover:underline mt-1">Change Picture</button>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                                    <a href="#account" class="block p-4 border-l-4 border-purple-500 bg-purple-50">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-user-circle text-purple-600 mr-3"></i>
+                                            <span class="font-semibold">Account</span>
+                                        </div>
+                                    </a>
+                                    <a href="#preferences" class="block p-4 border-l-4 border-transparent hover:bg-gray-50">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-sliders-h text-gray-600 mr-3"></i>
+                                            <span class="font-semibold">Preferences</span>
+                                        </div>
+                                    </a>
+                                    <a href="#appearance" class="block p-4 border-l-4 border-transparent hover:bg-gray-50">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-paint-brush text-gray-600 mr-3"></i>
+                                            <span class="font-semibold">Appearance</span>
+                                        </div>
+                                    </a>
+                                    <a href="#notifications" class="block p-4 border-l-4 border-transparent hover:bg-gray-50">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-bell text-gray-600 mr-3"></i>
+                                            <span class="font-semibold">Notifications</span>
+                                        </div>
+                                    </a>
+                                    <a href="#privacy" class="block p-4 border-l-4 border-transparent hover:bg-gray-50">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-shield-alt text-gray-600 mr-3"></i>
+                                            <span class="font-semibold">Privacy</span>
+                                        </div>
+                                    </a>
+                                    <a href="#api" class="block p-4 border-l-4 border-transparent hover:bg-gray-50">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-key text-gray-600 mr-3"></i>
+                                            <span class="font-semibold">API Settings</span>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="lg:col-span-3 space-y-8">
+                            <div id="account" class="card p-6">
+                                <h3 class="text-xl font-bold mb-6 flex items-center">
+                                    <i class="fas fa-user-circle text-purple-600 mr-3"></i>
+                                    Account Information
+                                </h3>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="font-semibold text-sm block mb-1">Full Name</label>
+                                        <input type="text" value="Sophia Carter" class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 focus:ring-purple-500">
+                                    </div>
+                                    <div>
+                                        <label class="font-semibold text-sm block mb-1">Email Address</label>
+                                        <input type="email" value="sophia.carter@example.com" class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 focus:ring-purple-500">
+                                    </div>
+                                    <div>
+                                        <label class="font-semibold text-sm block mb-1">Phone Number</label>
+                                        <input type="tel" value="+1 (555) 123-4567" class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 focus:ring-purple-500">
+                                    </div>
+                                    <div>
+                                        <label class="font-semibold text-sm block mb-1">Password</label>
+                                        <input type="password" value="********" class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 focus:ring-purple-500">
+                                    </div>
+                                    <p class="text-sm text-gray-500">Last updated: August 15, 2025</p>
+                                </div>
+                            </div>
+                            
+                            <div id="preferences" class="card p-6">
+                                <h3 class="text-xl font-bold mb-6 flex items-center">
+                                    <i class="fas fa-sliders-h text-purple-600 mr-3"></i>
+                                    Preferences
+                                </h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="font-semibold text-sm block mb-1">Currency</label>
+                                        <select class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 focus:ring-purple-500">
+                                            <option>USD - US Dollar</option>
+                                            <option>EUR - Euro</option>
+                                            <option>GBP - British Pound</option>
+                                            <option>JPY - Japanese Yen</option>
+                                            <option>AUD - Australian Dollar</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="font-semibold text-sm block mb-1">Language</label>
+                                        <select class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 focus:ring-purple-500">
+                                            <option>English</option>
+                                            <option>Spanish</option>
+                                            <option>French</option>
+                                            <option>German</option>
+                                            <option>Japanese</option>
+                                            <option>Arabic</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="font-semibold text-sm block mb-1">Time Format</label>
+                                        <select class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 focus:ring-purple-500">
+                                            <option>12-hour (AM/PM)</option>
+                                            <option>24-hour</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="font-semibold text-sm block mb-1">Distance Unit</label>
+                                        <select class="w-full bg-gray-50 border-gray-200 rounded-lg p-3 focus:ring-purple-500">
+                                            <option>Miles</option>
+                                            <option>Kilometers</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="appearance" class="card p-6">
+                                <h3 class="text-xl font-bold mb-6 flex items-center">
+                                    <i class="fas fa-paint-brush text-purple-600 mr-3"></i>
+                                    Appearance
+                                </h3>
+                                <h4 class="font-semibold mb-3">Theme</h4>
+                                <div class="grid grid-cols-2 gap-4 mb-6">
+                                    <button class="p-4 border-2 border-purple-500 rounded-lg text-center bg-white flex items-center justify-center flex-col">
+                                        <i class="fas fa-sun text-2xl mb-2 text-amber-500"></i>
+                                        <span class="font-medium">Light</span>
+                                    </button>
+                                    <button class="p-4 border rounded-lg text-center bg-gray-800 text-white flex items-center justify-center flex-col">
+                                        <i class="fas fa-moon text-2xl mb-2 text-blue-300"></i>
+                                        <span class="font-medium">Dark</span>
+                                    </button>
+                                </div>
+                                
+                                <h4 class="font-semibold mb-3">Color Scheme</h4>
+                                <div class="grid grid-cols-4 gap-4">
+                                    <button class="h-12 rounded-lg bg-gradient-to-r from-purple-600 to-pink-500 border-2 border-white shadow-sm"></button>
+                                    <button class="h-12 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-500"></button>
+                                    <button class="h-12 rounded-lg bg-gradient-to-r from-green-600 to-teal-500"></button>
+                                    <button class="h-12 rounded-lg bg-gradient-to-r from-orange-600 to-amber-500"></button>
+                                </div>
+                            </div>
+                            
+                            <div id="api" class="card p-6">
+                                <h3 class="text-xl font-bold mb-4 flex items-center">
+                                    <i class="fas fa-key text-purple-600 mr-3"></i>
+                                    API Settings
+                                </h3>
+                                <p class="text-gray-600 mb-6">Configure API keys for various integrations used throughout the application.</p>
+                                
+                                <div class="space-y-4">
+                                    <div>
+                                        <div class="flex justify-between items-center mb-1">
+                                            <label class="font-semibold text-sm">Gemini API Key</label>
+                                            <span class="text-green-600 text-xs font-medium">Active</span>
+                                        </div>
+                                        <div class="flex">
+                                            <input type="password" value="${GEMINI_API_KEY}" class="flex-grow bg-gray-50 border-gray-200 rounded-l-lg p-3 focus:ring-purple-500">
+                                            <button class="bg-gray-100 px-4 rounded-r-lg border-y border-r border-gray-200 hover:bg-gray-200 text-gray-700">
+                                                <i class="far fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <div class="flex justify-between items-center mb-1">
+                                            <label class="font-semibold text-sm">YouTube API Key</label>
+                                            <span class="text-green-600 text-xs font-medium">Active</span>
+                                        </div>
+                                        <div class="flex">
+                                            <input type="password" value="${YOUTUBE_API_KEY}" class="flex-grow bg-gray-50 border-gray-200 rounded-l-lg p-3 focus:ring-purple-500">
+                                            <button class="bg-gray-100 px-4 rounded-r-lg border-y border-r border-gray-200 hover:bg-gray-200 text-gray-700">
+                                                <i class="far fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <div class="flex justify-between items-center mb-1">
+                                            <label class="font-semibold text-sm">Google Search API Key</label>
+                                            <span class="text-green-600 text-xs font-medium">Active</span>
+                                        </div>
+                                        <div class="flex">
+                                            <input type="password" value="${GOOGLE_SEARCH_API_KEY}" class="flex-grow bg-gray-50 border-gray-200 rounded-l-lg p-3 focus:ring-purple-500">
+                                            <button class="bg-gray-100 px-4 rounded-r-lg border-y border-r border-gray-200 hover:bg-gray-200 text-gray-700">
+                                                <i class="far fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <div class="flex justify-between items-center mb-1">
+                                            <label class="font-semibold text-sm">Google Search Engine ID</label>
+                                            <span class="text-green-600 text-xs font-medium">Active</span>
+                                        </div>
+                                        <div class="flex">
+                                            <input type="text" value="${GOOGLE_SEARCH_ENGINE_ID}" class="flex-grow bg-gray-50 border-gray-200 rounded-lg p-3 focus:ring-purple-500">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex justify-end gap-3">
+                                <button class="btn-secondary">Cancel</button>
+                                <button class="btn-primary">Save All Changes</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `,
+             collaboration: `
+                <div id="collaboration" class="page">
+                    <h2 class="text-3xl font-bold mb-2">Coastal Getaway</h2>
+                    <p class="text-gray-600 mb-8">July 15 - July 22</p>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="lg:col-span-2 card p-6">
+                            <h3 class="text-xl font-bold mb-4">Invite Collaborators</h3>
+                            <div class="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-lg">
+                                <label class="font-semibold">Email Address</label>
+                                <input type="email" placeholder="Enter email address" class="w-full p-3 mt-2 rounded-lg border-transparent focus:ring-purple-500">
+                                <div class="flex gap-4 mt-4">
+                                    <button class="btn-primary flex-1">Invite via Email</button>
+                                    <button class="flex-1 py-3 bg-white rounded-lg font-semibold border hover:bg-gray-100">Share Link</button>
+                                </div>
+                            </div>
+                             <h3 class="text-xl font-bold mt-8 mb-4">Current Collaborators</h3>
+                             <div class="space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" class="w-10 h-10 rounded-full">
+                                        <p class="font-semibold">Olivia <span class="text-green-500 text-sm font-normal">Online</span></p>
+                                    </div>
+                                    <button class="text-gray-400 hover:text-red-500">Remove</button>
+                                </div>
+                             </div>
+                        </div>
+                        <div class="card p-6 flex flex-col">
+                            <h3 class="text-xl font-bold mb-4">Trip Chat</h3>
+                            <div class="flex-1 space-y-4 h-96 overflow-y-auto pr-2">
+                                <div class="flex items-start gap-3">
+                                    <img src="https://i.pravatar.cc/150?u=a042581f4e29026704e" class="w-8 h-8 rounded-full">
+                                    <div>
+                                        <p class="font-bold text-sm">Liam</p>
+                                        <div class="bg-gray-100 p-3 rounded-lg mt-1"><p>Hey team, I've started planning our trip to the coast. Any initial thoughts or preferences?</p></div>
+                                    </div>
+                                </div>
+                                 <div class="flex items-start gap-3 flex-row-reverse">
+                                    <img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" class="w-8 h-8 rounded-full">
+                                    <div class="w-full flex flex-col items-end">
+                                        <p class="font-bold text-sm text-right">Sophia</p>
+                                        <div class="bg-purple-500 text-white p-3 rounded-lg mt-1 text-left max-w-xs"><p>Exciting! I'm open to suggestions. Maybe somewhere with great beaches and seafood?</p></div>
+                                    </div>
+                                </div>
+                            </div>
+                             <div class="relative mt-4">
+                                <input type="text" placeholder="Type a message..." class="w-full bg-gray-100 border-transparent focus:ring-purple-500 focus:border-purple-500 rounded-full pl-5 pr-12 py-3">
+                                <button class="absolute right-3 top-1/2 -translate-y-1/2 text-purple-600 hover:text-purple-800"><i class="fas fa-paper-plane text-xl"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `
+        };
+
+        // --- API & DYNAMIC CONTENT FUNCTIONS ---
+
+        // Fetch images from Pexels
+        async function fetchPexelsImages(query = 'travel destinations', perPage = 8) {
+            try {
+                const response = await fetch(`https://api.pexels.com/v1/search?query=${query}&per_page=${perPage}`, {
+                    headers: { Authorization: PEXELS_API_KEY }
+                });
+                if (!response.ok) throw new Error('Pexels API request failed');
+                const data = await response.json();
+                return data.photos;
+            } catch (error) {
+                console.error("Pexels Error:", error);
+                return [];
+            }
+        }
+        
+        // Fetch weather data from OpenWeatherMap
+        async function fetchWeather(city = 'Paris') {
+            if (!OPENWEATHER_API_KEY || OPENWEATHER_API_KEY === 'YOUR_OPENWEATHER_API_KEY') {
+                console.warn("OpenWeatherMap API key is missing.");
+                return { temp: 'N/A', icon: 'fa-question-circle' };
+            }
+             try {
+                const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${OPENWEATHER_API_KEY}&units=metric`);
+                if (!response.ok) throw new Error('Weather API request failed');
+                const data = await response.json();
+                
+                // Basic mapping of weather conditions to FontAwesome icons
+                const iconMap = { 'Clear': 'fa-sun', 'Clouds': 'fa-cloud', 'Rain': 'fa-cloud-showers-heavy', 'Drizzle': 'fa-cloud-rain', 'Snow': 'fa-snowflake' };
+                const icon = iconMap[data.weather[0].main] || 'fa-smog';
+                
+                return { temp: Math.round(data.main.temp), icon: icon };
+            } catch (error) {
+                console.error("Weather API Error:", error);
+                return { temp: 'N/A', icon: 'fa-exclamation-circle' };
+            }
+        }
+
+
+        // Render the Explore page with dynamic images
+        async function renderExplorePage() {
+            const grid = document.getElementById('destinations-grid');
+            if (!grid) return;
+            
+            console.log("Fetching destination photos...");
+            const photos = await fetchPexelsImages('beautiful travel landscape', 8);
+            
+            if (photos && photos.length > 0) {
+                 grid.innerHTML = photos.map(photo => {
+                    const weather = { temp: Math.floor(Math.random() * 15) + 15, icon: 'fa-sun' }; // Mock weather
+                    return `
+                    <div class="card overflow-hidden hover:shadow-lg transition-all duration-300">
+                        <img src="${photo.src.large}" alt="${photo.alt}" class="w-full h-48 object-cover">
+                        <div class="p-5">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="text-lg font-bold capitalize">${photo.photographer.split(' ')[0]}'s View</h3>
+                                <div class="flex items-center gap-2 text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                                    <i class="fas ${weather.icon}"></i> ${weather.temp}°C
+                                </div>
+                            </div>
+                            <p class="text-gray-600 text-sm mb-4">${photo.alt || 'A stunning travel destination.'}</p>
+                            <div class="flex justify-between">
+                                <button class="flex-grow text-center py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-semibold mr-2">View More</button>
+                                <button class="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg"><i class="far fa-heart"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                `}).join('');
+            } else {
+                 grid.innerHTML = `<p class="col-span-full text-center text-gray-500">Could not load destinations. Please try again later.</p>`;
+            }
+        }
+        
+        // Fetch YouTube videos using YouTube API
+        async function fetchYouTubeVideos(query = 'travel destinations guide', maxResults = 3) {
+            if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') {
+                console.warn("YouTube API key is missing or invalid");
+                return [];
+            }
+            
+            try {
+                const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&maxResults=${maxResults}&type=video&key=${YOUTUBE_API_KEY}`;
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error('YouTube API request failed');
+                }
+                
+                const data = await response.json();
+                return data.items || [];
+            } catch (error) {
+                console.error("YouTube API Error:", error);
+                return [];
+            }
+        }
+        
+        // Render YouTube videos on Inspiration page
+        async function renderYouTubeVideos() {
+            const videoContainer = document.getElementById('youtube-videos');
+            if (!videoContainer) return;
+            
+            // Don't fetch for now, just use the existing content
+            // This keeps the page working even without a valid API key
+            console.log("YouTube videos section ready");
+            
+            // Add event listener to load more button
+            const loadMoreBtn = document.getElementById('load-more-videos');
+            if (loadMoreBtn) {
+                loadMoreBtn.addEventListener('click', async () => {
+                    loadMoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+                    
+                    try {
+                        const videos = await fetchYouTubeVideos('best travel destinations 2025', 3);
+                        
+                        if (videos && videos.length > 0) {
+                            const newVideos = videos.map(video => `
+                                <div class="card overflow-hidden hover:shadow-lg transition-all duration-300">
+                                    <div class="relative">
+                                        <img src="${video.snippet.thumbnails.high.url}" class="w-full h-48 object-cover">
+                                        <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                            <i class="fas fa-play-circle text-4xl text-white"></i>
+                                        </div>
+                                    </div>
+                                    <div class="p-4">
+                                        <h4 class="font-bold">${video.snippet.title}</h4>
+                                        <p class="text-gray-600 text-sm mt-1">${video.snippet.description.substring(0, 100)}...</p>
+                                        <div class="flex items-center justify-between mt-3">
+                                            <p class="text-sm text-gray-500">${video.snippet.channelTitle}</p>
+                                            <a href="https://www.youtube.com/watch?v=${video.id.videoId}" target="_blank" class="text-red-600 hover:text-red-700">
+                                                <i class="fas fa-external-link-alt"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('');
+                            
+                            videoContainer.innerHTML += newVideos;
+                        }
+                    } catch (error) {
+                        console.error("Error fetching more videos:", error);
+                    } finally {
+                        loadMoreBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Load More Videos';
+                    }
+                });
+            }
+        }
+        
+        // Handle Chat Functionality
+        function setupChat() {
+            const chatBox = document.getElementById('chat-box');
+            const chatInput = document.getElementById('chat-input');
+            const sendBtn = document.getElementById('chat-send-btn');
+            const quickPromptBtns = document.querySelectorAll('.quick-prompt-btn');
+
+            const sendMessage = async () => {
+                const message = chatInput.value.trim();
+                if (!message) return;
+
+                // Add user message to chat
+                chatBox.innerHTML += `
+                    <div class="flex items-start gap-3 flex-row-reverse">
+                        <img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" class="w-8 h-8 rounded-full">
+                        <div class="w-full flex flex-col items-end">
+                             <div class="chat-bubble-user p-3 rounded-lg mt-1 text-left max-w-md"><p>${message}</p></div>
+                        </div>
+                    </div>`;
+                chatInput.value = '';
+                chatBox.scrollTop = chatBox.scrollHeight;
+                
+                // Add typing indicator
+                chatBox.innerHTML += `
+                     <div id="typing-indicator" class="flex items-start gap-3">
+                        <div class="bg-purple-500 text-white p-2 rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0"><i class="fas fa-robot"></i></div>
+                        <div class="chat-bubble-ai p-4 rounded-lg max-w-md">
+                            <p class="italic">typing...</p>
+                        </div>
+                    </div>`;
+                chatBox.scrollTop = chatBox.scrollHeight;
+
+                // Simulate Gemini API call
+                try {
+                     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+                     const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: message }] }] })
+                     });
+                     if (!response.ok) throw new Error('Gemini API request failed');
+                     const result = await response.json();
+                     const aiResponse = result.candidates[0].content.parts[0].text;
+                     
+                     document.getElementById('typing-indicator')?.remove();
+                     chatBox.innerHTML += `
+                        <div class="flex items-start gap-3">
+                            <div class="bg-purple-500 text-white p-2 rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0"><i class="fas fa-robot"></i></div>
+                            <div class="chat-bubble-ai p-4 rounded-lg max-w-md">
+                                <p>${aiResponse.replace(/\*/g, '')}</p> 
+                            </div>
+                        </div>`;
+
+                } catch(error) {
+                    console.error("Gemini API Error:", error);
+                    document.getElementById('typing-indicator')?.remove();
+                    chatBox.innerHTML += `
+                        <div class="flex items-start gap-3">
+                            <div class="bg-purple-500 text-white p-2 rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0"><i class="fas fa-robot"></i></div>
+                            <div class="chat-bubble-ai p-4 rounded-lg max-w-md bg-red-100 text-red-700">
+                                <p>Sorry, I'm having trouble connecting. Please try again later.</p> 
+                            </div>
+                        </div>`;
+                }
+                chatBox.scrollTop = chatBox.scrollHeight;
+            };
+            
+            sendBtn.addEventListener('click', sendMessage);
+            chatInput.addEventListener('keypress', (e) => e.key === 'Enter' && sendMessage());
+            quickPromptBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    chatInput.value = btn.textContent;
+                    sendMessage();
+                });
+            });
+        }
+
+        // --- USER STATE MANAGEMENT ---
+        
+        // Simple user state management
+        const userState = {
+            currentPage: 'home',
+            favorites: [],
+            recentSearches: [],
+            settings: {
+                currency: 'USD',
+                language: 'English',
+                theme: 'light'
+            },
+            
+            // Add a destination to favorites
+            addToFavorites: function(destination) {
+                if (!this.favorites.some(fav => fav.id === destination.id)) {
+                    this.favorites.push(destination);
+                    console.log(`Added to favorites: ${destination.name}`);
+                    return true;
+                }
+                return false;
+            },
+            
+            // Add a recent search
+            addRecentSearch: function(query) {
+                // Keep only the last 5 searches
+                this.recentSearches = this.recentSearches
+                    .filter(item => item !== query) // Remove if already exists
+                    .slice(0, 4); // Keep only the 4 most recent
+                
+                this.recentSearches.unshift(query); // Add new query at the beginning
+                console.log(`Added to recent searches: ${query}`);
+            },
+            
+            // Update a setting
+            updateSetting: function(key, value) {
+                if (this.settings.hasOwnProperty(key)) {
+                    this.settings[key] = value;
+                    console.log(`Updated setting ${key} to ${value}`);
+                    return true;
+                }
+                return false;
+            }
+        };
+
+        // --- ROUTING & NAVIGATION ---
+
+        function navigateTo(hash) {
+            const pageId = hash.substring(1) || 'home';
+            
+            // Log for debugging
+            console.log(`Navigating to page: ${pageId}`);
+            
+            if (pages[pageId]) {
+                // Update user state
+                userState.currentPage = pageId;
+                
+                // Render the page content
+                pageContainer.innerHTML = pages[pageId];
+                
+                // Update active navigation link
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    const linkPage = link.getAttribute('href').substring(1);
+                    link.classList.toggle('active-nav', linkPage === pageId);
+                });
+                
+                // Call page-specific setup functions
+                switch(pageId) {
+                    case 'explore':
+                        renderExplorePage();
+                        break;
+                    case 'home':
+                        setupChat();
+                        break;
+                    case 'inspiration':
+                        renderYouTubeVideos();
+                        break;
+                }
+                
+                // Add event listeners for dynamic elements
+                setupPageEventListeners(pageId);
+                
+                // Scroll to top when navigating
+                window.scrollTo(0, 0);
+            } else {
+                console.error(`Page not found: ${pageId}`);
+                pageContainer.innerHTML = pages['home'];
+            }
+        }
+        
+        // Setup event listeners for elements that are dynamically added to the page
+        function setupPageEventListeners(pageId) {
+            // Common event listeners for all pages
+            const favoriteButtons = document.querySelectorAll('.favorite-btn');
+            if (favoriteButtons) {
+                favoriteButtons.forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const itemId = this.getAttribute('data-id');
+                        const itemName = this.getAttribute('data-name');
+                        
+                        if (itemId && itemName) {
+                            userState.addToFavorites({
+                                id: itemId,
+                                name: itemName,
+                                type: this.getAttribute('data-type') || 'destination'
+                            });
+                            
+                            // Visual feedback
+                            this.innerHTML = '<i class="fas fa-heart"></i>';
+                            this.classList.add('text-pink-500');
+                            
+                            // Show notification
+                            showNotification(`Added ${itemName} to favorites!`);
+                        }
+                    });
+                });
+            }
+            
+            // Page-specific event listeners
+            if (pageId === 'planner') {
+                const generateTripBtn = document.getElementById('generate-trip-btn');
+                if (generateTripBtn) {
+                    generateTripBtn.addEventListener('click', function() {
+                        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+                        
+                        // Simulate API call delay
+                        setTimeout(() => {
+                            this.innerHTML = '<i class="fas fa-magic"></i> Generate Trip Itinerary';
+                            showNotification('Trip itinerary generated successfully!');
+                        }, 2000);
+                    });
+                }
+            }
+        }
+        
+        // Show notification to the user
+        function showNotification(message, type = 'success') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `fixed top-24 right-4 p-4 rounded-lg shadow-lg text-white z-50 transition-all duration-300 transform translate-x-full ${type === 'success' ? 'bg-green-500' : 'bg-red-500'}`;
+            notification.innerHTML = message;
+            document.body.appendChild(notification);
+            
+            // Animate in
+            setTimeout(() => {
+                notification.classList.remove('translate-x-full');
+            }, 10);
+            
+            // Animate out and remove
+            setTimeout(() => {
+                notification.classList.add('translate-x-full');
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+        
+        // Event listeners for navigation
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, initial hash:', window.location.hash);
+            navigateTo(window.location.hash);
+        });
+        
+        window.addEventListener('hashchange', (e) => {
+            console.log('Hash changed to:', window.location.hash);
+            navigateTo(window.location.hash);
+        });
+        
+        document.getElementById('nav-menu').addEventListener('click', (e) => {
+            const link = e.target.closest('.nav-link');
+            if (link) {
+                e.preventDefault();
+                const newHash = new URL(link.href).hash;
+                console.log('Navigation link clicked, new hash:', newHash);
+                
+                if(window.location.hash !== newHash) {
+                    window.location.hash = newHash;
+                } else {
+                    // Force navigation even if hash is the same
+                    navigateTo(newHash);
+                }
+                
+                if(window.innerWidth < 1024) {
+                    document.querySelector('.sidebar').classList.remove('sidebar-open');
+                }
+            }
+        });
+
+        document.getElementById('menu-toggle').addEventListener('click', () => {
+            document.querySelector('.sidebar').classList.toggle('sidebar-open');
+        });
+
+        // Initialize API keys and ensure they're available
+        function checkAPIKeys() {
+            console.log("Checking API keys...");
+            if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY') {
+                console.warn("Warning: Gemini API key not set properly");
+            }
+            
+            if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') {
+                console.warn("Warning: YouTube API key not set properly");
+            }
+            
+            if (!GOOGLE_SEARCH_API_KEY || GOOGLE_SEARCH_API_KEY === 'YOUR_GOOGLE_SEARCH_API_KEY') {
+                console.warn("Warning: Google Search API key not set properly");
+            }
+        }
+
+        // Execute on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check API keys
+            checkAPIKeys();
+            
+            // Set a timeout to check if page content is loaded correctly
+            setTimeout(() => {
+                const pageContainer = document.getElementById('page-container');
+                if (!pageContainer.innerHTML.trim()) {
+                    console.error("Page container is empty, forcing home page load");
+                    navigateTo('#home');
+                }
+            }, 500);
+        });
+    </script>
+</body>
+</html>
+
